@@ -78,9 +78,13 @@ public class Parser
             }
             else if (Match("int") || Match("bool") || Match("void"))
             {
-                ParseDeclaration();
-                Match(";");
+				ParseAssignment();
+				Match(";");
             }
+			else if (MatchIdentifier())
+			{
+				ParseAssignment();
+			}
             else if (Match("}"))
             {
                 break;
@@ -92,8 +96,20 @@ public class Parser
         }
     }
 
-    // Метод для обработки конструкции switch
-    public void ParseSwitch()
+	private void ParseAssignment()
+	{
+		ParseIdentifier(); // Обрабатываем идентификатор (например, переменную)
+		ParseAssign(); // Обрабатываем знак присваивания "="
+
+		if (MatchNumber()) // Если это число, обрабатываем его
+		{
+			return;
+		}
+		ParseArithmeticExpression(); // В противном случае ожидаем арифметическое выражение
+	}
+
+	// Метод для обработки конструкции switch
+	public void ParseSwitch()
     {
         Match("("); // Открывающая скобка выражения switch
         ParseIdentifier(); // Выражение для switch
@@ -118,13 +134,13 @@ public class Parser
             {
                 RecordError("Expected 'case' or 'default'.");
             }
+			Match(";");
         }
     }
 
     // Метод для обработки конструкции case
     public void ParseCase()
     {
-
         var constant = ParseConstant(); // Получаем константу для сравнения
         Match(":"); // Двоеточие после case
         ParseDeclaration(); // Блок операторов для данного case
@@ -134,17 +150,16 @@ public class Parser
     public void ParseDefault()
     {
         Match(":"); // Двоеточие после default
-        ParseStatements(); // Блок операторов для default
+		ParseDeclaration(); // Блок операторов для default
     }
 
     // Метод для получения константы (для case)
     public int ParseConstant()
     {
-        if (MatchNumber()) // Если это число
+		var token = tokens.Peek();
+		if (MatchNumber()) // Если это число
         {
-            var token = tokens.Peek();
             int result = int.Parse(token.Value);
-			tokens.Dequeue();
             return result;
         }
         else
@@ -194,10 +209,20 @@ public class Parser
 
 	public void ParseDeclaration()
 	{
-		ParseIdentifier();
-		ParseAssign();
-		ParseArithmeticExpression();
+		if (Match("int")) { }
+		else if (Match("bool")) { }
+		else { Match("void"); }
+
+			ParseIdentifier(); // Обрабатываем идентификатор (например, переменную)
+		ParseAssign(); // Обрабатываем знак присваивания "="
+
+		if (MatchNumber()) // Если это число, обрабатываем его
+		{
+			return;
+		}
+		ParseArithmeticExpression(); // В противном случае ожидаем арифметическое выражение
 	}
+
 
 	public void ParseReturn()
 	{
@@ -235,7 +260,7 @@ public class Parser
 		}
 		else if (MatchNumber() || MatchIdentifier())
 		{
-			ParseNumber()
+			
 		}
 		else
 		{
@@ -295,6 +320,7 @@ public class Parser
 		if (int.TryParse(token.Value, out _))
 		{
 			Console.WriteLine($"Matched: {token}");
+			tokens.Dequeue();
 			return true;
 		}
 		return false;
@@ -335,7 +361,7 @@ class Program
 {
 	static void Main(string[] args)
 	{
-		string input = "int main() { int a = 0; return 10; }";
+		string input = "int main() { switch (a) {case 1: int a = 0; default: a =0;} return 10; }";
 
 		var tokens = Lexer.Tokenize(input);
 
