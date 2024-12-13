@@ -24,71 +24,137 @@ public class Token
 
 public class Parser
 {
-	private Queue<Token> tokens;
-	private List<string> errors;
+    private Queue<Token> tokens;
+    private List<string> errors;
 
-	public Parser(List<Token> tokenList)
-	{
-		tokens = new Queue<Token>(tokenList);
-		errors = new List<string>();
-	}
+    public Parser(List<Token> tokenList)
+    {
+        tokens = new Queue<Token>(tokenList);
+        errors = new List<string>();
+    }
 
-	public void ParseProgram()
-	{
-		ParseType();
-		Match("main");
-		Match("(");
-		Match(")");
-		Match("{");
-		ParseStatements();
-		Match("}");
-	}
+    public void ParseProgram()
+    {
+        ParseType();
+        Match("main");
+        Match("(");
+        Match(")");
+        Match("{");
+        ParseStatements();
+        Match("}");
+    }
 
-	public void ParseType()
-	{
-		if (Match("int") || Match("bool") || Match("void"))
-			return;
-		RecordError("Expected type (int, bool, void).");
-	}
+    public void ParseType()
+    {
+        if (Match("int") || Match("bool") || Match("void"))
+            return;
+        RecordError("Expected type (int, bool, void).");
+    }
 
-	public void ParseStatements()
-	{
-		while (tokens.Count > 0)
-		{
-			if (Match("{"))
-			{
-				ParseStatements();
-				Match("}");
-			}
-			else if (Match("for"))
-			{
-				ParseFor();
-			}
-			else if (Match("if"))
-			{
-				ParseIf();
-			}
-			else if (Match("return"))
-			{
-				ParseReturn();
-			}
-			else if (Match("int") || Match("bool") || Match("void"))
-			{
-				ParseDeclaration();
-				Match(";");
-			}
-			else if (Match("}"))
-			{
-				break;
-			}
-			else
-			{
-				RecordError("Expected statement.");
-			}
-		}
-	}
+    public void ParseStatements()
+    {
+        while (tokens.Count > 0)
+        {
+            if (Match("{"))
+            {
+                ParseStatements();
+                Match("}");
+            }
+            else if (Match("for"))
+            {
+                ParseFor();
+            }
+            else if (Match("switch")) // Обработчик для switch
+            {
+                ParseSwitch(); // Новый метод для обработки switch
+            }
+            else if (Match("if"))
+            {
+                ParseIf();
+            }
+            else if (Match("return"))
+            {
+                ParseReturn();
+            }
+            else if (Match("int") || Match("bool") || Match("void"))
+            {
+                ParseDeclaration();
+                Match(";");
+            }
+            else if (Match("}"))
+            {
+                break;
+            }
+            else
+            {
+                RecordError("Expected statement.");
+            }
+        }
+    }
 
-	public void ParseFor()
+    // Метод для обработки конструкции switch
+    public void ParseSwitch()
+    {
+        Match("("); // Открывающая скобка выражения switch
+        ParseIdentifier(); // Выражение для switch
+        Match(")"); // Закрывающая скобка выражения switch
+        Match("{"); // Открывающая фигурная скобка блока switch
+
+        while (true)
+        {
+            if (Match("case")) // Проверяем на наличие case
+            {
+                ParseCase(); // Вызов метода для обработки case
+            }
+            else if (Match("default")) // Проверяем на наличие default
+            {
+                ParseDefault(); // Вызов метода для обработки default
+            }
+            else if (Match("}")) // Конец блока switch
+            {
+                break;
+            }
+            else
+            {
+                RecordError("Expected 'case' or 'default'.");
+            }
+        }
+    }
+
+    // Метод для обработки конструкции case
+    public void ParseCase()
+    {
+
+        var constant = ParseConstant(); // Получаем константу для сравнения
+        Match(":"); // Двоеточие после case
+        ParseDeclaration(); // Блок операторов для данного case
+    }
+
+    // Метод для обработки конструкции default
+    public void ParseDefault()
+    {
+        Match(":"); // Двоеточие после default
+        ParseStatements(); // Блок операторов для default
+    }
+
+    // Метод для получения константы (для case)
+    public int ParseConstant()
+    {
+        if (MatchNumber()) // Если это число
+        {
+            var token = tokens.Peek();
+            int result = int.Parse(token.Value);
+			tokens.Dequeue();
+            return result;
+        }
+        else
+        {
+            RecordError("Expected constant value for case.");
+            return 0; // В случае ошибки возвращаем нулевое значение
+        }
+    }
+
+    public void ParseFor()
 	{
 		Match("(");
 		ParseDeclaration();
@@ -169,7 +235,7 @@ public class Parser
 		}
 		else if (MatchNumber() || MatchIdentifier())
 		{
-			// Valid factor
+			ParseNumber()
 		}
 		else
 		{
@@ -229,7 +295,6 @@ public class Parser
 		if (int.TryParse(token.Value, out _))
 		{
 			Console.WriteLine($"Matched: {token}");
-			tokens.Dequeue();
 			return true;
 		}
 		return false;
@@ -270,7 +335,7 @@ class Program
 {
 	static void Main(string[] args)
 	{
-		string input = "int main() { int x = 5; if ( x == 5) { int a = 0 ;};+ return} 10; }";
+		string input = "int main() { int a = 0; return 10; }";
 
 		var tokens = Lexer.Tokenize(input);
 
